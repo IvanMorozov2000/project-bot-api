@@ -1,4 +1,4 @@
-package me.ivan.morozov.scrapperapi.dao;
+package me.ivan.morozov.scrapperapi.repositories;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
@@ -29,4 +29,10 @@ public class TgChatRepository {
         return chats.get(id);
     }
 
+    @Override
+    public String toString() {
+        return "TgChatRepository{" +
+                "chats=" + chats +
+                '}';
+    }
 }

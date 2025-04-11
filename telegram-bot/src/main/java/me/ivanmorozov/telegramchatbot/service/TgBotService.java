@@ -2,6 +2,7 @@ package me.ivanmorozov.telegramchatbot.service;
 
 
 import lombok.extern.slf4j.Slf4j;
+import me.ivanmorozov.telegramchatbot.client.ScrapperClient;
 import me.ivanmorozov.telegramchatbot.config.TgBotConfig;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -20,6 +21,7 @@ import java.util.List;
 @Slf4j
 public class TgBotService extends TelegramLongPollingBot {
     private final TgBotConfig botConfig;
+    private final ScrapperClient client;
 
     @Override
     public String getBotUsername() {
@@ -31,19 +33,19 @@ public class TgBotService extends TelegramLongPollingBot {
     }
 
 
-    public TgBotService(TgBotConfig botConfig){
+    public TgBotService(TgBotConfig botConfig, ScrapperClient client){
         this.botConfig = botConfig;
+        this.client = client;
         List<BotCommand> listCommand = new ArrayList<>();
         listCommand.add(new BotCommand("/start", "Начните работу с ботом"));
         listCommand.add(new BotCommand("/track", "Подписаться на новости по ссылке"));
         listCommand.add(new BotCommand("/untrack", "Отписаться от новостей"));
         listCommand.add(new BotCommand("/help", "Информация и помощь"));
         listCommand.add(new BotCommand("/list", "Показать все отслеживаемые ссылки"));
-        listCommand.add(new BotCommand("/settings", "Настройки уведомлений"));
         try {
             this.execute(new SetMyCommands(listCommand, new BotCommandScopeDefault(), null));
         } catch (TelegramApiException e){
-            log.error("Ошибка :/ " + e.getMessage());
+            log.error("Ошибка обработки команды: {}", e.getMessage());
         }
     }
 
@@ -71,9 +73,17 @@ public class TgBotService extends TelegramLongPollingBot {
     }
 
     private void startCommand(long chatId, String userName) throws TelegramApiException {
-        String answer = "Приветсвую, " + userName +", давайте я расскажу что умею...";
+        String answer = "Приветсвую, " + userName +", перед началом работы давай я тебя зарегистрирую";
         sendMsg(chatId,answer);
-        log.info("Пользователь сделал запрос " + userName);
+        if (client.isChatRegister(chatId)) {
+            sendMsg(chatId, "ℹ️ Вы уже зарегистрированы ранее, можете пользоваться ботом ;)");
+            log.info("Пользователь {} (chatId={}) уже зарегистрирован", userName, chatId);
+            return;
+        }
+        if (client.registerChat(chatId)) {
+         sendMsg(chatId, "✅" + "Регистрация прошла успешно");
+            log.info("Зарегистрировали пользователя " + userName);
+        } else sendMsg(chatId, "⚠️" + "Ошибка регистрации. Попробуйте позже.");
     }
 
     private void trackCommand(long chatId, String link) throws TelegramApiException{
